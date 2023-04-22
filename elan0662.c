@@ -125,6 +125,6 @@ static void __exit elan_touchpad_exit(void) {
 module_init(elan_touchpad_init);
 module_exit(elan_touchpad_exit);
 
-MODULE_AUTHOR("Your Name");
+MODULE_AUTHOR("OS Group 8");
 MODULE_DESCRIPTION("ELAN Touchpad Driver");
 MODULE_LICENSE("GPL");
