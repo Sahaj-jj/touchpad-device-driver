@@ -30,41 +30,13 @@ struct elan_touchpad_data {
     struct input_dev *input;
 };
 
-static int elan_touchpad_open(struct inode *inode, struct file *file);
-static int elan_touchpad_release(struct inode *inode, struct file *file);
-static ssize_t elan_touchpad_read(struct file *file, char __user *buf,
-                                  size_t count, loff_t *pos);
-static ssize_t elan_touchpad_write(struct file *file, const char __user *buf,
-                                   size_t count, loff_t *pos);
+static int elan_touchpad_input_callback(struct input_dev *dev,
+                                        unsigned int type, unsigned int code,
+                                        int value) {
+    printk(KERN_INFO "elan_touchpad: Input event: type=%u, code=%u, value=%d\n",
+           type, code, value);
 
-static const struct file_operations elan_touchpad_fops = {
-    .owner = THIS_MODULE,
-    .read = elan_touchpad_read,
-    .write = elan_touchpad_write,
-    .open = elan_touchpad_open,
-    .release = elan_touchpad_release,
-};
-
-static int elan_touchpad_open(struct inode *inode, struct file *file) {
-    printk(KERN_INFO "elan_touchpad: Device has been opened\n");
     return 0;
-}
-
-static int elan_touchpad_release(struct inode *inode, struct file *file) {
-    printk(KERN_INFO "elan_touchpad: Device has been closed\n");
-    return 0;
-}
-
-static ssize_t elan_touchpad_read(struct file *file, char __user *buf,
-                                  size_t count, loff_t *pos) {
-    printk(KERN_INFO "elan_touchpad: Read operation not supported\n");
-    return -EINVAL;
-}
-
-static ssize_t elan_touchpad_write(struct file *file, const char __user *buf,
-                                   size_t count, loff_t *pos) {
-    printk(KERN_INFO "elan_touchpad: Write operation not supported\n");
-    return -EINVAL;
 }
 
 static int elan_touchpad_probe(struct i2c_client *client,
@@ -84,12 +56,35 @@ static int elan_touchpad_probe(struct i2c_client *client,
 
     input->name = "ELAN0662:00 04F3:30BC Touchpad";
     input->id.bustype = BUS_I2C;
+    input->id.vendor = 0x4f3;
+    input->id.product = 0x30bc;
+    input->id.version = 0x100;
     input->dev.parent = &client->dev;
     input_set_capability(input, EV_KEY, BTN_LEFT);
     input_set_capability(input, EV_KEY, BTN_RIGHT);
+    input_set_capability(input, EV_KEY, BTN_TOOL_FINGER);
+    input_set_capability(input, EV_KEY, BTN_TOUCH);
+    input_set_capability(input, EV_KEY, BTN_TOOL_DOUBLETAP);
+    // input_set_capability(input, EV_KEY, BTN_TOOL_TRIPLETAP);
+    // input_set_capability(input, EV_KEY, BTN_TOOL_QUADTAP);
+    input_set_capability(input, EV_ABS, ABS_MT_POSITION_X);
+    input_set_capability(input, EV_ABS, ABS_MT_POSITION_Y);
+    input_set_capability(input, EV_ABS, ABS_MT_TOUCH_MAJOR);
+    input_set_capability(input, EV_ABS, ABS_MT_TOUCH_MINOR);
+    input_set_capability(input, EV_ABS, ABS_MT_ORIENTATION);
+    input_set_capability(input, EV_ABS, ABS_MT_PRESSURE);
+    input_set_capability(input, EV_ABS, ABS_MT_DISTANCE);
+    input_set_capability(input, EV_ABS, ABS_MT_SLOT);
+    input_set_capability(input, EV_ABS, ABS_MT_TOOL_TYPE);
+    input_set_capability(input, EV_ABS, ABS_MT_TRACKING_ID);
+    // input_set_capability(input, EV_SYN, SYN_REPORT);
+    // input_set_capability(input, INPUT_PROP_BUTTONPAD);
+    // input_set_capability(input, INPUT_PROP_POINTER);
+
     input_set_drvdata(input, data);
 
-    input->evbit[0] |= BIT_MASK(EV_KEY) | BIT_MASK(EV_SYN);
+    input->evbit[0] |= BIT_MASK(EV_KEY) | BIT_MASK(EV_ABS) | BIT_MASK(EV_SYN);
+    input->event = elan_touchpad_input_callback;
 
     if (input_register_device(input)) {
         dev_err(&client->dev, "Failed to register input device\n");
@@ -105,7 +100,6 @@ static int elan_touchpad_probe(struct i2c_client *client,
 static int elan_touchpad_remove(struct i2c_client *client) {
     struct elan_touchpad_data *data = i2c_get_clientdata(client);
     input_unregister_device(data->input);
-
     return 0;
 }
 
